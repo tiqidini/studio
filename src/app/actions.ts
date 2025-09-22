@@ -1,8 +1,9 @@
 "use server";
 
-import { equivalentPurchases } from "@/ai/flows/equivalent-purchases";
-import { projectSavings } from "@/ai/flows/savings-projection";
 import type { HabitFormValues } from "@/lib/schema";
+import type { EquivalentPurchasesOutput } from "@/ai/flows/equivalent-purchases";
+import type { SavingsProjectionOutput } from "@/ai/flows/savings-projection";
+
 
 function getDailyCost(costPerInstance: number, frequency: 'daily' | 'weekly' | 'monthly'): number {
   switch (frequency) {
@@ -21,33 +22,29 @@ export async function getAiAnalysis(data: HabitFormValues) {
   try {
     const dailyCost = getDailyCost(data.costPerInstance, data.frequency);
 
-    const [projection1Year, projection5Years, equivalents] = await Promise.all([
-      projectSavings({
-        habitName: data.habitName,
-        dailyCost: dailyCost,
-        projectionYears: 1,
-      }),
-      projectSavings({
-        habitName: data.habitName,
-        dailyCost: dailyCost,
-        projectionYears: 5,
-      }),
-      equivalentPurchases({
-        ...data,
-        timeframeYears: 1,
-      }),
-    ]);
-    
-    const equivalentPurchasesText = equivalents.equivalentPurchases;
+    const projection1Year: SavingsProjectionOutput = {
+      totalSavings: dailyCost * 365,
+      reasoning: "За год вы могли бы купить новый смартфон или совершить короткое путешествие.",
+    };
+
+    const projection5Years: SavingsProjectionOutput = {
+      totalSavings: dailyCost * 365 * 5,
+      reasoning: "За 5 лет вы могли бы накопить на первоначальный взнос за квартиру или купить хороший подержанный автомобиль.",
+    };
+
+    const equivalents: EquivalentPurchasesOutput = {
+      savings: data.costPerInstance * (data.frequency === 'daily' ? 365 : data.frequency === 'weekly' ? 52 : 12),
+      equivalentPurchases: "На эти деньги можно было бы купить несколько новых книг или оплатить годовую подписку на стриминговый сервис.",
+    };
 
     return {
       projection1Year,
       projection5Years,
-      equivalentPurchases: equivalentPurchasesText,
+      equivalentPurchases: equivalents.equivalentPurchases,
     };
   } catch (error) {
     console.error("AI analysis failed:", error);
-    return { error: "Не удалось получить анализ от ИИ. Пожалуйста, попробуйте еще раз." };
+    return { error: "Не удалось получить анализ. Пожалуйста, попробуйте еще раз." };
   }
 }
 
