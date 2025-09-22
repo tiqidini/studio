@@ -1,3 +1,9 @@
+import UAHabitCalc from "@/components/UAHabitCalc";
+
 export default function Home() {
-  return <></>;
+  return (
+    <main>
+      <UAHabitCalc />
+    </main>
+  );
 }
