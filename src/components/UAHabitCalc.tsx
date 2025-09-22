@@ -55,15 +55,15 @@ export default function UAHabitCalc() {
     resolver: zodResolver(habitFormSchema),
     defaultValues: {
       habitName: "",
-      costPerInstance: "" as any,
+      costPerInstance: "",
       frequency: "daily",
     },
   });
 
-  const watchedValues = form.watch();
+  const costPerInstance = form.watch("costPerInstance");
+  const frequency = form.watch("frequency");
 
   useEffect(() => {
-    const { costPerInstance, frequency } = watchedValues;
     const cost = parseFloat(costPerInstance as any);
     if (cost && cost > 0 && frequency) {
       let daily = 0;
@@ -87,7 +87,7 @@ export default function UAHabitCalc() {
     } else {
       setExpenses(null);
     }
-  }, [watchedValues]);
+  }, [costPerInstance, frequency]);
 
   const onSubmit = (values: HabitFormValues) => {
     setAiResult(null);
