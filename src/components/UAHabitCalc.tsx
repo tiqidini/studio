@@ -5,9 +5,8 @@ import { DollarSign, BarChart, BrainCircuit, Loader2 } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 
-import type { AiAnalysisResult } from "@/app/actions";
-import { getAiAnalysis } from "@/app/actions";
-import { habitFormSchema, type HabitFormValues } from "@/lib/schema";
+import type { HabitFormValues } from "@/lib/schema";
+import { habitFormSchema } from "@/lib/schema";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,7 +35,75 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "./icons";
-import { Separator } from "./ui/separator";
+
+// Types that were in actions.ts
+type SavingsProjectionOutput = {
+    totalSavings: number;
+    reasoning: string;
+};
+
+type EquivalentPurchasesOutput = {
+    savings: number;
+    equivalentPurchases: string;
+};
+
+type AiAnalysisResult = {
+    projection1Year: SavingsProjectionOutput;
+    projection5Years: SavingsProjectionOutput;
+    equivalentPurchases: string;
+    error?: string;
+};
+
+
+// Logic that was in actions.ts
+function getDailyCost(costPerInstance: number, frequency: 'daily' | 'weekly' | 'monthly'): number {
+  switch (frequency) {
+    case 'daily':
+      return costPerInstance;
+    case 'weekly':
+      return costPerInstance / 7;
+    case 'monthly':
+      return costPerInstance / 30.44; // Average days in a month
+    default:
+      return 0;
+  }
+}
+
+async function getAiAnalysis(data: HabitFormValues): Promise<AiAnalysisResult> {
+  try {
+    const dailyCost = getDailyCost(data.costPerInstance, data.frequency);
+
+    const projection1Year: SavingsProjectionOutput = {
+      totalSavings: dailyCost * 365,
+      reasoning: "За год вы могли бы купить новый смартфон или совершить короткое путешествие.",
+    };
+
+    const projection5Years: SavingsProjectionOutput = {
+      totalSavings: dailyCost * 365 * 5,
+      reasoning: "За 5 лет вы могли бы накопить на первоначальный взнос за квартиру или купить хороший подержанный автомобиль.",
+    };
+
+    const equivalents: EquivalentPurchasesOutput = {
+      savings: data.costPerInstance * (data.frequency === 'daily' ? 365 : data.frequency === 'weekly' ? 52 : 12) * 1, // 1 year timeframe for this
+      equivalentPurchases: "На эти деньги можно было бы купить несколько новых книг или оплатить годовую подписку на стриминговый сервис.",
+    };
+
+    return {
+      projection1Year,
+      projection5Years,
+      equivalentPurchases: equivalents.equivalentPurchases,
+    };
+  } catch (error) {
+    console.error("Analysis failed:", error);
+    return { 
+        projection1Year: { totalSavings: 0, reasoning: ''},
+        projection5Years: { totalSavings: 0, reasoning: ''},
+        equivalentPurchases: '',
+        error: "Не удалось получить анализ. Пожалуйста, попробуйте еще раз." 
+    };
+  }
+}
+
 
 type ExpenseSummary = {
   daily: number;
@@ -92,6 +159,7 @@ export default function UAHabitCalc() {
   const onSubmit = (values: HabitFormValues) => {
     setAiResult(null);
     startTransition(async () => {
+      // Now calling the local function
       const result = await getAiAnalysis(values);
       if (result.error) {
         toast({
@@ -246,10 +314,10 @@ export default function UAHabitCalc() {
             <div className="text-center">
               <h2 className="font-headline text-3xl font-bold tracking-tight">
                 <BrainCircuit className="inline-block mr-2 h-8 w-8 text-primary"/>
-                Анализ сбережений от ИИ
+                Анализ сбережений
               </h2>
               <p className="mt-1 text-muted-foreground">
-                Вот что искусственный интеллект говорит о ваших потенциальных сбережениях.
+                Вот что можно сказать о ваших потенциальных сбережениях.
               </p>
             </div>
             
